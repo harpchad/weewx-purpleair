@@ -216,17 +216,17 @@ class PurpleAirMonitor(StdService):
                 logerr(e)
                 return
             self.save_data(data)
-        # Prepare a record copy that can be merged into the archive
-        # record.
-        purple_record = data.copy()
-        # Remove items that clash with existing archive record components.
-        purple_record.pop('dateTime', None)
-        purple_record.pop('usUnits')
-        # Merge observations into archive record
-        event.record.update(purple_record)
+            # Prepare a record copy that can be merged into the archive
+            # record.
+            purple_record = data.copy()
+            # Remove items that clash with existing archive record components.
+            purple_record.pop('dateTime', None)
+            purple_record.pop('usUnits')
+            # Merge observations into archive record
+            event.record.update(purple_record)
+            # Save record so that it can be "reported" in LOOP packets
+            self.last_purple_record = purple_record
         self.last_ts = now
-        # Save record so that it can be "reported" in LOOP packets
-        self.last_purple_record = purple_record
 
     def new_loop_packet(self, event):
         """merge last purple measurement into LOOP packet"""
