@@ -116,7 +116,6 @@ def loginf(msg):
 def logerr(msg):
     logmsg(syslog.LOG_ERR, msg)
 
-
 def collect_data(session, hostname, port, timeout, now_ts = None):
     # used for testing
     if now_ts is None:
@@ -196,8 +195,11 @@ class PurpleAirMonitor(StdService):
             raise Exception('purpleair schema mismatch: %s != %s' % (dbcol, memcol))
 
         self.last_ts = None
+        self.last_purple_record = None
         # listen for NEW_ARCHIVE_RECORDS
         self.bind(weewx.NEW_ARCHIVE_RECORD, self.new_archive_record)
+	# also listen for NEW_LOOP_PACKETS
+        self.bind(weewx.NEW_LOOP_PACKET, self.new_loop_packet)
         # create a session
         self.session = requests.Session()
 
@@ -226,7 +228,22 @@ class PurpleAirMonitor(StdService):
                 logerr(e)
                 return
             self.save_data(data)
+            # Prepare a record copy that can be merged into the archive
+            # record.
+            purple_record = data.copy()
+            # Remove items that clash with existing archive record components.
+            purple_record.pop('dateTime', None)
+            purple_record.pop('usUnits')
+            # Merge observations into archive record
+            event.record.update(purple_record)
+            # Save record so that it can be "reported" in LOOP packets
+            self.last_purple_record = purple_record
         self.last_ts = now
+
+    def new_loop_packet(self, event):
+        """merge last purple measurement into LOOP packet"""
+        if self.last_purple_record is not None:
+            event.packet.update(self.last_purple_record)
 
     def save_data(self, record):
         """save data to database"""
